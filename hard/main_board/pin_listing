@@ -1,0 +1,36 @@
+PIN		Current		Must be		Locked  Why
+-------------------------------------------
+PB12	BP_IO[0]	SPI_CS			X	SPI 5V Tolerant here
+PB13	BP_IO[1]	SPI_CK			X	SPI 5V Tolerant here
+PB14	usb_int_en	SPI_MISO		X	SPI 5V Tolerant here
+PB15	usb_ext_en	SPI_MOSI		X	SPI 5V Tolerant here
+PA8		CROSS		CROSS
+PA9		CIRCLE		CIRCLE
+PA10	R2			R2
+PA11	BP_USB_n	BP_USB_n		X	USB is here
+PA12	BP_USB_p	BP_USB_p		X	USB is here
+PA15	L2			L2
+PB3		HOME		HOME
+PB4		START		START
+PB5		SELECT		SELECT
+PB6		DISABLE		BP_IO[0]
+PB7					BP_IO[1]
+PB8		LED_R		LED_R
+PB9		LED_L		LED_L
+PC13				
+PC14				usb_int_en		X	3.3V Low current
+PC15				usb_ext_en		X	3.3V low current
+PA0		UP			UP
+PA1		DOWN		DOWN
+PA2		LEFT		LEFT
+PA3		RIGHT		RIGHT
+PA4		SQUARE		SQUARE
+PA5		TRIANGLE	TRIANGLE
+PA6		R1			R1
+PA7		L1			L1
+PB0		L3			L3
+PB1		R3			R3
+PB10	UART_TX		UART_TX			X	5V tolerant UART is here
+PB11	UART_RX		UART_RX			X	5V tolerant UART is here
+
+On retire DISABLE

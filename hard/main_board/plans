@@ -1,0 +1,39 @@
+Connections:
+============
+
+To host
+-------
+PB12 <--> NSS2
+PB13 <--> SCK2
+PB14 <--> MISO2
+PB15 <--> MOSI2
+PA11 <--> USB-
+PA12 <--> USB+
+
+Buttons
+-------
+Up      <--> PA0
+down    <--> PA1
+Left    <--> PA2
+Right   <--> PA3
+Lp      <--> PA4
+Mp      <--> PA5
+Hp      <--> PA6
+3p      <--> PA7
+Lk      <--> PA8
+Mk      <--> PA9
+Hk      <--> PA10
+3k      <--> PA15
+L3      <--> PB0
+R3      <--> PB1
+Home    <--> PB3
+Start   <--> PB4
+Select  <--> PB5
+Disable <--> PB6
+
+Commands
+--------
+USB_switch1 <--> PB7
+USB_switch2 <--> PB8
+LedL        <--> PB9
+LedR        <--> PB10

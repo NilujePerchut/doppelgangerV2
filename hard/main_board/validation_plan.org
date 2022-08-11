@@ -1,0 +1,111 @@
+#+TITLE: Doppelganger V2 Hardware Validation Plan
+#+AUTHOR: Niluje
+#+OPTIONS: num:nil
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/org/theme-readtheorg.setup
+
+* Power supply
+- [X] Buck mode
+  3.3V Volts mesured for 5 Volts (USB) in input.
+- [X] Boost mode
+  3.3V Volts mesured for 3.3 Volts (lab power supply) in input
+
+* ARM microprocessor
+** Bootloader
+- [X] Porting from github
+- [X] Flash a simple UF2 application
+- [X] Implements the config sector in both bootloader and applcation
+- [ ] Implements a patcher for user space config
+** Buttons
+- [X] Up button
+- [X] Reset button
+** Progammation
+- [X] DFU Bootloader
+- [X] BOOT0 via push button
+** HSE Oscillator
+- [X] Startup time (>>1ms. is this a problem ?)
+- [X] Frequency (8MHz)
+- [X] CPU at 168MHz
+** Serial debug port
+- [X] Tx
+- [X] Rx
+** Buttons
+- [X] Start/Select/Home Filtering
+- [X] Start
+- [X] Select
+- [X] Home
+- [X] Up
+- [X] Down
+- [X] Left
+- [X] Right
+- [X] L3
+- [X] R3
+- [X] Square
+- [X] Triangle
+- [X] L1
+- [X] Cross
+- [X] Circle
+- [X] R1
+- [X] L2
+- [X] R2
+
+** Serial link with PIC microprocessor
+- [X] Tx
+- [X] Rx
+
+** Misc
+- [ ] 5V / 3.3V marker
+  - [X] from 5V (2.31V read)
+  - [ ] from 3.3V
+- [X] GPIOs from mux
+
+* PIC microprocessor
+** Programmation
+- [X] MCLR mechanism
+- [X] ICSP
+  - [X] Low level
+- [X] Progammation via ARM
+** CLC
+- [ ] PassThrough to ARM
+- [ ] PassTrough From ARM
+** Term command
+- [X] SNES command
+- [X] PSX command
+** Serial link with ARM microprocessor
+RA4 and RA5 initialy planned to be used as Tx and Rx (respectively) are
+not available through PPS. So use RB0 (RX) RB1 (TX)
+- [X] Tx
+- [X] Rx
+** Misc
+- [X] GPIO from mux
+
+* Analog/USB mux
+- [X] to ARM USB
+- [ ] to Brook USB
+- [X] to ARM IOs
+- [X] to PIC IOs
+- [X] default (to ARM USB)
+
+* Switchable Pullups
+Bug: 10k Ohms is located on MISO instead of MOSI
+- [X] SPI MOSI
+- [X] SPI CS
+- [X] SPI CLK
+- [X] GPIO0
+
+* LEDS
+- [X] LEDL
+- [X] LEDR
+** Power supplies on connector
+- [X] V33
+- [X] GND
+
+
+* Brook interface
+- [ ] Open collector buffers
+- [X] Power switch
+- [ ] Test with a brook
+
+* Debug connectors
+- [X] ARM to PIC
+- [X] ARM Mux IOs
+- [X] PIC Mux IOs
