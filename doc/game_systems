@@ -1,0 +1,119 @@
+Supported game systems
+======================
+
+1) Nes
+------
+Voltage: 5V
+Inputs: Clock, Latch
+Outputs: Data
+Data frequency: 83.34KHz
+
+2) Super Nes
+------------
+Voltage: 5V
+Inputs: Clock, Latch
+Outputs: Data
+Data frequency: 83.34KHz
+
+3) Playstation 1
+----------------
+Voltage: 3.3V-5V
+Inputs: Clock, Command, Att
+Outputs: Data, Ack
+Data frequency: 250KHz
+
+4) Playstation 2
+----------------
+Voltage: 3.3V-5V
+Inputs: Clock, Command, Att
+Outputs: Data, Ack
+Data frequency: 500KHz
+
+5) GameCube
+-----------
+Voltage: 3.3V
+Bidir: Data
+Polling Period
+Data Frequency: 250KHz
+
+6) Saturn
+---------
+Voltage: 5V
+Inputs: S0, S1
+Outputs: D0, D1, D2, D3
+Max Data Frequency: 733KHz (variable)
+
+7) Dreamcast
+------------
+Voltage: 5V for power supply, 3,3V for data
+Bidir: Data1, Data2
+Data Frequency: 1MHz
+
+8) Playstation 3 (internal)
+---------------------------
+Voltage: USB
+
+9) Switch
+---------
+Voltage: USB
+
+10) Little Fairy
+----------------
+Voltage: 3.3V-5V
+Inputs: Clock, Command, Att
+Outputs: Data, Ack
+Data frequency: At least 10MHz
+
+11) External USB
+----------------
+Voltage: USB
+
+12) PC
+------
+Voltage: USB
+
+
+Pinouts
+=======
+
++------+-------------------+----------+---------------+--------------+--------+-------------------+----------+-----------+
+| RJ45 | Doppelganger name | Internal | NES           | PS1          | Saturn | PS3-PS4-PC-SWITCH | Gamecube | Dreamcast |
+|      |                   | Pullup   | SNES          | PS2          |        | PS4-PC-SWITCH     |          |           |
+|      |                   | Resistor |               | Little Fairy |        | PC-SWITCH         |          |           |
+|      |                   |          |               |              |        | SWITCH            |          |           |
++------+-------------------+----------+---------------+--------------+--------+-------------------+----------+-----------+
+|  1   | GND               |          | GND           | GND          | GND    | GND               | GND      | GND       |
+|  2   | SPI Clk           | 3.5K     | CLOCK(U 3.5K) | CLOCK(I)     | D0(O)  |                   |          |           |
+|  3   | SPI MOSI          |          |               | COMMAND(I)   | D3(O)  |                   |          |           |
+|  4   | SPI MISO          | 1K-10K   | DATA(O)       | DATA(C1K-10K)| D1(O)  |                   | DATA(B)  |           |
+|  5   | IO0               | 1K-10K   |               | ACK(C1K-10K) | S0(I)  | D-(B)             |          | DATA1(b)  |
+|  6   | IO1               |          |               |              | S1(I)  | D+(B)             |          | DATA2(b)  |
+|  7   | SPI CS            | 3.5K     | LATCH(U 3.5K) | ATT          | D2(O)  |                   |          |           |
+|  8   | VIO               |          | 5V            | 3.3V-5V      | 5V     | 5V (VUSB)         | 3.3V     | 5V        |
++------+-------------------+----------+---------------+--------------+--------+-------------------+----------+-----------+
+
+Pin directions:
+I: in
+O: out
+b: bidir
+B: bidir open collector with resistor inside Doppelganger
+U: in pullup
+C: open collector with resistor inside Doppelganger
+
+All Doppelganger IO must be connected to 5V tolerant pins.
+
+
+Arcade buttons
+==============
+
+4 Directions: UP, DOWN, LEFT, RIGHT
+4 Punches   : SQUARE, TRIANGLE, R1, L1
+4 Kicks     : CROSS, CIRCLE, R2, L2
+3 Control   : HOME(PS), SELECT(OPTION), START(SHARE)
+2 Misc      : L3, R3
+Total       : 17
+
+DISABLE is done by hardware ahead.
+
+
+

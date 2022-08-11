@@ -1,0 +1,33 @@
+PIC16F18855 pin attribution
+===========================
+
+* Fixed
+
+1* MCLR
+2 RA0 Debug IO A
+3 RA1 Debug IO B
+4 RA2 Debug IO C
+5 RA3 Debug IO D
+6 RA4 Uart-Tx (BUG !!! use RB1 instead)
+7 RA5 Uart-Rx (Weak pull up)
+8 Vss
+9 RA7 X
+10 RA6 BootCmd
+11* RC0 Data_To_From_STM32
+12* RC1 Data_To_From_STM32
+13* RC2 Data_To_From_STM32
+14* RC3 Data_To_From_STM32
+15* RC4 Data_To_From_RJ45
+16* RC5 Data_To_From_RJ45
+17* RC6 Data_To_From_RJ45
+18* RC7 Data_To_From_RJ45
+19 Vss
+20 Vdd
+21 RB0 X
+22 RB1 UART TX (due to bug)
+23 RB2 Muxed_Data_From_RJ45
+24 RB3 Muxed_Data_From_RJ45
+25 RB4 SnesTermsCommand (Weak pull down)
+26 RB5 PSXTermsCommand (Weak pull down)
+27* RB6 ICSPCLK
+28* RB7 ICSPDAT
