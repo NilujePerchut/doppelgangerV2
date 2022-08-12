@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import time
+import serial
+import argparse
+
+
+MAGIC = b"FLASHH"
+MAGIC_VALIDATION = b"Magic validated"
+
+
+def _serial_getline(ser, strip=True):
+    """dummy recev"""
+    data = bytearray()
+    eol = b"\r\n"
+    while True:
+        data += ser.read(ser.inWaiting() or 1)
+        if data.endswith(eol):
+            if strip:
+                data = data.replace(b"\n", b"")
+                data = data.replace(b"\r", b"")
+            return data
+
+
+def _magic_step(ser):
+    """Send magic and wait for acknowledge"""
+    ser.flushInput()
+    ser.write(MAGIC)
+    ret = _serial_getline(ser)
+    if not ret.endswith(MAGIC_VALIDATION[1:]):
+        sys.exit(F"Magic validation not found: {ret}")
+    print("Magic validated")
+
+
+def _size_step(ser, hex_file):
+    """Send size and wait for acknowledge"""
+    ser.flushInput()
+    hex_size = os.path.getsize(hex_file)
+    print(F"Using {hex_file} len:{hex_size}")
+    ser.write(bytes(F"{hex_size:08X}", "ascii"))
+    ret = _serial_getline(ser)
+    if not ret == bytearray(F"Found len: {hex_size}", encoding="ascii"):
+        sys.exit(F"Len validation failed: {ret}")
+    print("Size validated")
+
+
+def pic_flash(dev, hex_file):
+    """Flashes the PIC hex file through the given tty.
+       Only works for the Doppelganger flasher"""
+    try:
+        open(hex_file)
+    except IOError:
+        sys.exit(F"{hex_file} does not exists")
+
+    url = F"spy://{dev}?file=/tmp/spy.txt"
+
+    try:
+        ser = serial.serial_for_url(url, 115200, timeout=1)
+    except serial.SerialException:
+        sys.exit(F"tty device ({dev}) not found")
+
+    time.sleep(2)
+    _magic_step(ser)
+    time.sleep(2)
+    _size_step(ser, hex_file)
+
+    # finally send the hex_file, char by char
+    with open(hex_file, "r") as f:
+        while True:
+            c = f.read(1)
+
+            if not c:
+                break
+
+            ser.write(bytearray(c, encoding="ascii"))
+
+            print(".", end="")
+            sys.stdout.flush()
+
+    print("File sent.")
+
+    while True:
+        print(_serial_getline(ser))
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Doppelganger PIC flasher")
+    parser.add_argument("tty", help="path to tty device")
+    parser.add_argument("hex_file", help="path to hex file")
+    args = parser.parse_args()
+    print(args.tty, args.hex_file)
+    pic_flash(args.tty, args.hex_file)
