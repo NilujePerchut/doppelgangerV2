@@ -1,0 +1,8 @@
+[submodule "soft/arm/lib/libopencm3"]
+	path = soft/arm/lib/libopencm3
+	url = https://github.com/NilujePerchut/libopencm3
+	branch = doppelganger
+[submodule "soft/arm/bootloader/uf2-stm32f"]
+	path = soft/arm/bootloader/uf2-stm32f
+	url = https://github.com/NilujePerchut/uf2-stm32f
+	branch = doppelganger
