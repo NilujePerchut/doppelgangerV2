@@ -14,7 +14,7 @@
 - [X] Porting from github
 - [X] Flash a simple UF2 application
 - [X] Implements the config sector in both bootloader and applcation
-- [ ] Implements a patcher for user space config
+- [X] Implements a patcher for user space config
 ** Buttons
 - [X] Up button
 - [X] Reset button
@@ -53,9 +53,9 @@
 - [X] Rx
 
 ** Misc
-- [ ] 5V / 3.3V marker
+- [X] 5V / 3.3V marker
   - [X] from 5V (2.31V read)
-  - [ ] from 3.3V
+  - [X] from 3.3V (1.52V read)
 - [X] GPIOs from mux
 
 * PIC microprocessor
@@ -80,7 +80,7 @@ not available through PPS. So use RB0 (RX) RB1 (TX)
 
 * Analog/USB mux
 - [X] to ARM USB
-- [ ] to Brook USB
+- [X] to Brook USB
 - [X] to ARM IOs
 - [X] to PIC IOs
 - [X] default (to ARM USB)
@@ -101,9 +101,9 @@ Bug: 10k Ohms is located on MISO instead of MOSI
 
 
 * Brook interface
-- [ ] Open collector buffers
+- [X] Open collector buffers
 - [X] Power switch
-- [ ] Test with a brook
+- [X] Test with a brook
 
 * Debug connectors
 - [X] ARM to PIC
