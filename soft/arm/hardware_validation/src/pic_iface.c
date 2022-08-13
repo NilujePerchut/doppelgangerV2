@@ -539,7 +539,7 @@ bool flash_pic_from_uart(void)
 	uint8_t i;
 	uint8_t magic_index;
 	uint32_t hex_len;
-	char hex_file[3000];
+	char hex_file[4000];
 
 	/* Asumes printf/puts is initialized */
 	printf("PIC programming start\n");
@@ -597,3 +597,356 @@ void pic_debug(void)
 		delay_ms(500);
 	}
 }
+
+
+void pic_mem_write(unsigned short address, unsigned char data)
+{
+	usart_send_blocking(PIC_USART, 'W');
+	usart_send_blocking(PIC_USART, address&0xFF);
+	usart_send_blocking(PIC_USART, (address>>8)&0xFF);
+	usart_send_blocking(PIC_USART, data);
+	usart_recv_blocking(PIC_USART); /* Wait for the Ack */
+}
+
+
+unsigned char pic_mem_read(unsigned short address)
+{
+	unsigned char data;
+	usart_send_blocking(PIC_USART, 'R');
+	usart_send_blocking(PIC_USART, address&0xFF);
+	usart_send_blocking(PIC_USART, (address>>8)&0xFF);
+	data = usart_recv_blocking(PIC_USART);
+	usart_recv_blocking(PIC_USART); /* Wait for the Ack */
+	return data;
+}
+
+
+void set_pic_gpio(int gpio, int value)
+{
+	// GPIO0 -> RB3
+	// GPIO1 -> RB2
+
+	unsigned char cur;
+	const unsigned char gpio_offset[] = {3, 2};
+
+	cur = GET_PIC_REG(PIC_LATB);
+
+	cur &= ~(1<<gpio_offset[gpio]);
+	cur |= value << gpio_offset[gpio];
+
+	SET_PIC_REG(PIC_LATB, cur);
+}
+
+
+void setup_clc_passthrough_channel1(unsigned char direction)
+{
+	/* According to Datasheet chap22.6, programming CLC is performed by
+	 * configuring the 12 stages:
+	 *	1) Disable CLC
+	 *	2) Select desired inputs
+	 *	3) Clear any associated ANSEL bits
+	 *	4) Set TRIS bit as input for the input pin
+	 *	5) Set TRIS bit as ouput for the ouput pin
+	 *	6) Enable choosen input through the four gates
+	 *	7) Gate ouput polarity
+	 *	8) Select the desired logic function
+	 *	9) Select ouptut polarity
+	 *	10) If ouput id PPS drived, configure output PPS
+	 *	11) If interrupts are needed -> setup interrupts
+	 *	12) Enables CLC
+	 */
+
+	/* 1) Disable CLC during configuration */
+	SET_PIC_FIELD(PIC_CLC1CON, LC1EN, 0);
+
+	/* 2) Data Selection: selects CLC_IN PPS value for first channel */
+	SET_PIC_REG(PIC_CLC1SEL0, PIC_CLC1SEL_IN_PPS0);
+	SET_PIC_REG(PIC_CLC1SEL1, 0x0);
+	SET_PIC_REG(PIC_CLC1SEL2, 0x0);
+	SET_PIC_REG(PIC_CLC1SEL3, 0x0);
+
+	/* 3) Clear Associated ANSEL bits */
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_RJ45_CHANNEL1, DIGITAL);
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_ARM_CHANNEL1, DIGITAL);
+
+	/* 4|5|10) Setup pin configuration */
+	switch(direction) {
+		case RJ45_2_ARM:
+			puts("Channel 1: RJ45 -> ARM\n");
+			SET_PIC_REG(PIC_CLCIN0PPS, PPSIN_RJ45_CHANNEL1);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL1, OUTPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL1, INPUT);
+			SET_PIC_REG(OUTPIN_ARM_CLC_CHANNEL1, CLCOUT_INDEX_CHANNEL1);
+			break;
+		case ARM_2_RJ45:
+			puts("Channel 1: ARM -> RJ45\n");
+			SET_PIC_REG(PIC_CLCIN0PPS, PPSIN_ARM_CHANNEL1);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL1, INPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL1, OUTPUT);
+			SET_PIC_REG(OUTPIN_RJ45_CLC_CHANNEL1, CLCOUT_INDEX_CHANNEL1);
+			break;
+		default:
+			puts("Warning unknown dir\n");
+			break;
+	}
+	unsigned char tmp = GET_PIC_REG(PIC_TRISC);
+	printf("\ttrisc = 0x{%02x}\n", tmp);
+
+	/* 6) Data Gating: Non inverted CLC gate
+	 * First gate will redirect the given input signal.
+	 * All other three, will propagate a fixed 1 */
+	SET_PIC_REG(PIC_CLC1GLS0, CLC_GATE_ONLY_FIRST_CHANNEL);
+	SET_PIC_REG(PIC_CLC1GLS1, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC1GLS2, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC1GLS3, 0);    /* Fixed 0 on all outputs*/
+
+	/* 7) Gate output polarity */
+	SET_PIC_FIELD(PIC_CLC1POL, LC1G1POL, 0);  /* Non-inverting */
+	SET_PIC_FIELD(PIC_CLC1POL, LC1G2POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC1POL, LC1G3POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC1POL, LC1G4POL, 1);  /* Inverting */
+
+	/* 8) Logic Function: 4-INPUT AND */
+	SET_PIC_FIELD(PIC_CLC1CON, LC1MODE, LCMODE_4_INPUT_AND);
+
+	/* 11) Interrupts */
+	/* Not needed */
+
+	/* 12) Finaly enable the CLC block */
+	SET_PIC_FIELD(PIC_CLC1CON, LC1EN, 1);
+}
+
+void setup_clc_passthrough_channel2(unsigned char direction)
+{
+	/* According to Datasheet chap22.6, programming CLC is performed by
+	 * configuring the 12 stages:
+	 *	1) Disable CLC
+	 *	2) Select desired inputs
+	 *	3) Clear any associated ANSEL bits
+	 *	4) Set TRIS bit as input for the input pin
+	 *	5) Set TRIS bit as ouput for the ouput pin
+	 *	6) Enable choosen input through the four gates
+	 *	7) Gate ouput polarity
+	 *	8) Select the desired logic function
+	 *	9) Select ouptut polarity
+	 *	10) If ouput id PPS drived, configure output PPS
+	 *	11) If interrupts are needed -> setup interrupts
+	 *	12) Enables CLC
+	 */
+
+	/* 1) Disable CLC during configuration */
+	SET_PIC_FIELD(PIC_CLC2CON, LC2EN, 0);
+
+	/* 2) Data Selection: selects CLC_IN PPS value for first channel */
+	SET_PIC_REG(PIC_CLC2SEL0, PIC_CLC2SEL_IN_PPS0);
+	SET_PIC_REG(PIC_CLC2SEL1, 0x0);
+	SET_PIC_REG(PIC_CLC2SEL2, 0x0);
+	SET_PIC_REG(PIC_CLC2SEL3, 0x0);
+
+	/* 3) Clear Associated ANSEL bits */
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_RJ45_CHANNEL2, DIGITAL);
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_ARM_CHANNEL2, DIGITAL);
+
+	/* 4|5|10) Setup pin configuration */
+	switch(direction) {
+		case RJ45_2_ARM:
+			puts("Channel 2: RJ45 -> ARM\n");
+			SET_PIC_REG(PIC_CLCIN1PPS, PPSIN_RJ45_CHANNEL2);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL2, OUTPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL2, INPUT);
+			SET_PIC_REG(OUTPIN_ARM_CLC_CHANNEL2, CLCOUT_INDEX_CHANNEL2);
+			break;
+		case ARM_2_RJ45:
+			puts("Channel 2: ARM -> RJ45\n");
+			SET_PIC_REG(PIC_CLCIN1PPS, PPSIN_ARM_CHANNEL2);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL2, INPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL2, OUTPUT);
+			SET_PIC_REG(OUTPIN_RJ45_CLC_CHANNEL2, CLCOUT_INDEX_CHANNEL2);
+			break;
+		default:
+			puts("Warning unknown dir\n");
+			break;
+	}
+	unsigned char tmp = GET_PIC_REG(PIC_TRISC);
+	printf("\ttrisc = 0x{%02x}\n", tmp);
+
+	/* 6) Data Gating: Non inverted CLC gate
+	 * First gate will redirect the given input signal.
+	 * All other three, will propagate a fixed 1 */
+	SET_PIC_REG(PIC_CLC2GLS0, CLC_GATE_ONLY_FIRST_CHANNEL);
+	SET_PIC_REG(PIC_CLC2GLS1, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC2GLS2, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC2GLS3, 0);    /* Fixed 0 on all outputs*/
+
+	/* 7) Gate output polarity */
+	SET_PIC_FIELD(PIC_CLC2POL, LC2G1POL, 0);  /* Non-inverting */
+	SET_PIC_FIELD(PIC_CLC2POL, LC2G2POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC2POL, LC2G3POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC2POL, LC2G4POL, 1);  /* Inverting */
+
+	/* 8) Logic Function: 4-INPUT AND */
+	SET_PIC_FIELD(PIC_CLC2CON, LC2MODE, LCMODE_4_INPUT_AND);
+
+	/* 11) Interrupts */
+	/* Not needed */
+
+	/* 12) Finaly enable the CLC block */
+	SET_PIC_FIELD(PIC_CLC2CON, LC2EN, 1);
+}
+
+void setup_clc_passthrough_channel3(unsigned char direction)
+{
+	/* According to Datasheet chap22.6, programming CLC is performed by
+	 * configuring the 12 stages:
+	 *	1) Disable CLC
+	 *	2) Select desired inputs
+	 *	3) Clear any associated ANSEL bits
+	 *	4) Set TRIS bit as input for the input pin
+	 *	5) Set TRIS bit as ouput for the ouput pin
+	 *	6) Enable choosen input through the four gates
+	 *	7) Gate ouput polarity
+	 *	8) Select the desired logic function
+	 *	9) Select ouptut polarity
+	 *	10) If ouput id PPS drived, configure output PPS
+	 *	11) If interrupts are needed -> setup interrupts
+	 *	12) Enables CLC
+	 */
+
+	/* 1) Disable CLC during configuration */
+	SET_PIC_FIELD(PIC_CLC3CON, LC3EN, 0);
+
+	/* 2) Data Selection: selects CLC_IN PPS value for first channel */
+	SET_PIC_REG(PIC_CLC3SEL0, PIC_CLC3SEL_IN_PPS0);
+	SET_PIC_REG(PIC_CLC3SEL1, 0x0);
+	SET_PIC_REG(PIC_CLC3SEL2, 0x0);
+	SET_PIC_REG(PIC_CLC3SEL3, 0x0);
+
+	/* 3) Clear Associated ANSEL bits */
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_RJ45_CHANNEL3, DIGITAL);
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_ARM_CHANNEL3, DIGITAL);
+
+	/* 4|5|10) Setup pin configuration */
+	switch(direction) {
+		case RJ45_2_ARM:
+			puts("Channel 3: RJ45 -> ARM\n");
+			SET_PIC_REG(PIC_CLCIN2PPS, PPSIN_RJ45_CHANNEL3);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL3, OUTPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL3, INPUT);
+			SET_PIC_REG(OUTPIN_ARM_CLC_CHANNEL3, CLCOUT_INDEX_CHANNEL3);
+			break;
+		case ARM_2_RJ45:
+			puts("Channel 3: ARM -> RJ45\n");
+			SET_PIC_REG(PIC_CLCIN2PPS, PPSIN_ARM_CHANNEL3);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL3, INPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL3, OUTPUT);
+			SET_PIC_REG(OUTPIN_RJ45_CLC_CHANNEL3, CLCOUT_INDEX_CHANNEL3);
+			break;
+		default:
+			puts("Warning unknown dir\n");
+			break;
+	}
+	unsigned char tmp = GET_PIC_REG(PIC_TRISC);
+	printf("\ttrisc = 0x{%02x}\n", tmp);
+
+	/* 6) Data Gating: Non inverted CLC gate
+	 * First gate will redirect the given input signal.
+	 * All other three, will propagate a fixed 1 */
+	SET_PIC_REG(PIC_CLC3GLS0, CLC_GATE_ONLY_FIRST_CHANNEL);
+	SET_PIC_REG(PIC_CLC3GLS1, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC3GLS2, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC3GLS3, 0);    /* Fixed 0 on all outputs*/
+
+	/* 7) Gate output polarity */
+	SET_PIC_FIELD(PIC_CLC3POL, LC3G1POL, 0);  /* Non-inverting */
+	SET_PIC_FIELD(PIC_CLC3POL, LC3G2POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC3POL, LC3G3POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC3POL, LC3G4POL, 1);  /* Inverting */
+
+	/* 8) Logic Function: 4-INPUT AND */
+	SET_PIC_FIELD(PIC_CLC3CON, LC3MODE, LCMODE_4_INPUT_AND);
+
+	/* 11) Interrupts */
+	/* Not needed */
+
+	/* 12) Finaly enable the CLC block */
+	SET_PIC_FIELD(PIC_CLC3CON, LC3EN, 1);
+}
+
+void setup_clc_passthrough_channel4(unsigned char direction)
+{
+	/* According to Datasheet chap22.6, programming CLC is performed by
+	 * configuring the 12 stages:
+	 *	1) Disable CLC
+	 *	2) Select desired inputs
+	 *	3) Clear any associated ANSEL bits
+	 *	4) Set TRIS bit as input for the input pin
+	 *	5) Set TRIS bit as ouput for the ouput pin
+	 *	6) Enable choosen input through the four gates
+	 *	7) Gate ouput polarity
+	 *	8) Select the desired logic function
+	 *	9) Select ouptut polarity
+	 *	10) If ouput id PPS drived, configure output PPS
+	 *	11) If interrupts are needed -> setup interrupts
+	 *	12) Enables CLC
+	 */
+
+	/* 1) Disable CLC during configuration */
+	SET_PIC_FIELD(PIC_CLC4CON, LC4EN, 0);
+
+	/* 2) Data Selection: selects CLC_IN PPS value for first channel */
+	SET_PIC_REG(PIC_CLC4SEL0, PIC_CLC4SEL_IN_PPS0);
+	SET_PIC_REG(PIC_CLC4SEL1, 0x0);
+	SET_PIC_REG(PIC_CLC4SEL2, 0x0);
+	SET_PIC_REG(PIC_CLC4SEL3, 0x0);
+
+	/* 3) Clear Associated ANSEL bits */
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_RJ45_CHANNEL4, DIGITAL);
+	SET_PIC_FIELD(PIC_ANSELC, ANSELC_ARM_CHANNEL4, DIGITAL);
+
+	/* 4|5|10) Setup pin configuration */
+	switch(direction) {
+		case RJ45_2_ARM:
+			puts("Channel 4: RJ45 -> ARM\n");
+			SET_PIC_REG(PIC_CLCIN3PPS, PPSIN_RJ45_CHANNEL4);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL4, OUTPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL4, INPUT);
+			SET_PIC_REG(OUTPIN_ARM_CLC_CHANNEL4, CLCOUT_INDEX_CHANNEL4);
+			break;
+		case ARM_2_RJ45:
+			puts("Channel 4: ARM -> RJ45\n");
+			SET_PIC_REG(PIC_CLCIN3PPS, PPSIN_ARM_CHANNEL4);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_ARM_INDEX_CHANNEL4, INPUT);
+			SET_PIC_FIELD(PIC_TRISC, TRISC_RJ45_INDEX_CHANNEL4, OUTPUT);
+			SET_PIC_REG(OUTPIN_RJ45_CLC_CHANNEL4, CLCOUT_INDEX_CHANNEL4);
+			break;
+		default:
+			puts("Warning unknown dir\n");
+			break;
+	}
+	unsigned char tmp = GET_PIC_REG(PIC_TRISC);
+	printf("\ttrisc = 0x{%02x}\n", tmp);
+
+	/* 6) Data Gating: Non inverted CLC gate
+	 * First gate will redirect the given input signal.
+	 * All other three, will propagate a fixed 1 */
+	SET_PIC_REG(PIC_CLC4GLS0, CLC_GATE_ONLY_FIRST_CHANNEL);
+	SET_PIC_REG(PIC_CLC4GLS1, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC4GLS2, 0);    /* Fixed 0 on all outputs*/
+	SET_PIC_REG(PIC_CLC4GLS3, 0);    /* Fixed 0 on all outputs*/
+
+	/* 7) Gate output polarity */
+	SET_PIC_FIELD(PIC_CLC4POL, LC4G1POL, 0);  /* Non-inverting */
+	SET_PIC_FIELD(PIC_CLC4POL, LC4G2POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC4POL, LC4G3POL, 1);  /* Inverting */
+	SET_PIC_FIELD(PIC_CLC4POL, LC4G4POL, 1);  /* Inverting */
+
+	/* 8) Logic Function: 4-INPUT AND */
+	SET_PIC_FIELD(PIC_CLC4CON, LC4MODE, LCMODE_4_INPUT_AND);
+
+	/* 11) Interrupts */
+	/* Not needed */
+
+	/* 12) Finaly enable the CLC block */
+	SET_PIC_FIELD(PIC_CLC4CON, LC4EN, 1);
+}
+

@@ -20,5 +20,6 @@ struct keys {
 	int home;
 };
 
+void update_key_buff(void);
 void dump_keys(void);
 void init_keys(void);

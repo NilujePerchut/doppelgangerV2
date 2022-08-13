@@ -33,12 +33,7 @@ void init_dbg_usart(void)
 
 
 /**
- * Use USART_CONSOLE as a console.
- * This is a syscall for newlib
- * @param file
- * @param ptr
- * @param len
- * @return
+ * Syscalls for newlib
  */
 int _write(int file, char *ptr, int len)
 {
@@ -56,3 +51,9 @@ int _write(int file, char *ptr, int len)
 	errno = EIO;
 	return -1;
 }
+
+int _read(int fd, char *buf, int count) {
+	*buf = usart_recv_blocking(DBG_USART);
+	return 1;
+}
+

@@ -1,0 +1,2 @@
+void snes(void);
+

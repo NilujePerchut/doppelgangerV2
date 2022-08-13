@@ -65,8 +65,8 @@
   - [X] Low level
 - [X] Progammation via ARM
 ** CLC
-- [ ] PassThrough to ARM
-- [ ] PassTrough From ARM
+- [X] PassThrough to ARM
+- [X] PassTrough From ARM
 ** Term command
 - [X] SNES command
 - [X] PSX command

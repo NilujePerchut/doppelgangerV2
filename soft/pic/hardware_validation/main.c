@@ -2,6 +2,7 @@
 #define NO_BIT_DEFINES
 #include <pic14regs.h>
 #include <stdint.h>
+#include "src/clc.h"
 
 #define IN 1
 #define OUT 0
@@ -160,20 +161,20 @@ static void setup_pic_gpio(void)
 static void pic_gpio_pulses(void)
 {
 	// Test pattern
-	PIC_GPIO0_LAT = 0;	
-	PIC_GPIO1_LAT = 0;	
+	PIC_GPIO0_LAT = 0;
+	PIC_GPIO1_LAT = 0;
 	tempo(10000);
-	PIC_GPIO0_LAT = 1;	
-	PIC_GPIO1_LAT = 0;	
+	PIC_GPIO0_LAT = 1;
+	PIC_GPIO1_LAT = 0;
 	tempo(60000);
-	PIC_GPIO0_LAT = 0;	
-	PIC_GPIO1_LAT = 1;	
+	PIC_GPIO0_LAT = 0;
+	PIC_GPIO1_LAT = 1;
 	tempo(40000);
-	PIC_GPIO0_LAT = 1;	
-	PIC_GPIO1_LAT = 1;	
+	PIC_GPIO0_LAT = 1;
+	PIC_GPIO1_LAT = 1;
 	tempo(80000);
-	PIC_GPIO0_LAT = 0;	
-	PIC_GPIO1_LAT = 0;	
+	PIC_GPIO0_LAT = 0;
+	PIC_GPIO1_LAT = 0;
 }
 
 static void usart_tx_blocking(unsigned short c)
@@ -187,6 +188,44 @@ static unsigned char usart_rx_blocking(void)
 {
 	while (!PIR3bits.RCIF);
 	return RCREG;
+}
+
+static void setup_clc_from_uart(void)
+{
+	/* Setup one CLC line
+	 * Args:
+	 *   - 1st param : clc line index (1-4)
+	 *   - 2nd param : direction (i/o) */
+	unsigned char index;
+	char direction;
+
+	index = usart_rx_blocking() - 0x30;
+	direction = usart_rx_blocking() - 0x30;
+	setup_clc_passthrough(index, direction);
+}
+
+
+static void write_to_sfr(void)
+{
+	volatile unsigned char addr_l, addr_h, data;
+	addr_l = usart_rx_blocking();
+	addr_h = usart_rx_blocking();
+	data = usart_rx_blocking();
+	FSR0L = addr_l;
+	FSR0H = addr_h;
+	INDF0 = data;
+}
+
+
+static void read_from_sfr(void)
+{
+	volatile unsigned char addr_l, addr_h, data;
+	addr_l = usart_rx_blocking();
+	addr_h = usart_rx_blocking();
+	FSR0L = addr_l;
+	FSR0H = addr_h;
+	data = INDF0;
+	usart_tx_blocking(data);
 }
 
 /* Main goal is to validate the following points:
@@ -204,6 +243,7 @@ void main(void)
 	setup_term_commands();
 	setup_uart();
 	setup_pic_gpio();
+	reset_clcs();
 	while(1) {
 		c = usart_rx_blocking();
 		DBG_IOA_LAT = 1;
@@ -227,6 +267,19 @@ void main(void)
 			case 'G':
 				/* Send GPIOs pulses */
 				pic_gpio_pulses();
+				break;
+			case 'c':
+				/* Setup CLC */
+				setup_clc_from_uart();
+				break;
+			case 'W':
+				/* Write to SFR from ARM */
+				write_to_sfr();
+				break;
+			case 'R':
+				/* Write to SFR from ARM */
+				read_from_sfr();
+				break;
 			default:
 				c = 'u';
 				break;

@@ -17,7 +17,7 @@ COMMON_CFLAGS := -ggdb3 $(ARCH_FLAGS)
 CFLAGS := $(COMMON_CFLAGS) -Os -ffunction-sections -fdata-sections
 
 # specs option MUST apear first
-LDFLAGS := --specs=nosys.specs $(COMMON_CFLAGS) --static -nostartfiles -Wl,--gc-sections
+LDFLAGS := --specs=nosys.specs $(COMMON_CFLAGS) --static -nostartfiles -Wl,--gc-sections -Xlinker -Map=$(BUILD_DIR)/output.map
 DBG_FLAGS := -ex 'target extended-remote $(DBG_TTY)'\
 			 -ex 'monitor version'\
 			 -ex 'monitor swdp_scan'\
